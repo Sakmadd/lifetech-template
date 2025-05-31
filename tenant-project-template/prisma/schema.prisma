@@ -1,0 +1,37 @@
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../generated/prisma"
+  binaryTargets = ["native", "debian-openssl-1.0.x", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPERADMIN
+  ADMIN
+  STAFF
+}
+
+enum DokuPaymentType {
+  VIRTUAL_ACCOUNT
+  E_WALLET
+  DIRECT_DEBIT
+  QRIS
+}
+
+model Users {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  enterpriseUserId String    @unique
+  name             String
+  position         String?
+  isActive         Boolean?  @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  @@map("users")
+}

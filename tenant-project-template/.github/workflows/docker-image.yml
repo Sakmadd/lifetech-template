@@ -1,0 +1,39 @@
+name: CI/CD - BACKEND TEMPLATES
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-22.04
+    environment: backend
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Login to GitHub Container Registry
+        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ghcr.io -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin
+
+      - name: Build and Push Docker Image
+        run: |
+          USERNAME=$(echo "${{ secrets.REGISTRY_USERNAME }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE=ghcr.io/$USERNAME/swms-tenant-backend:latest
+          docker build -t $IMAGE .
+          docker push $IMAGE
+
+      - name: Deploy to Tencent CVM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            USERNAME=$(echo "${{ secrets.REGISTRY_USERNAME }}" | tr '[:upper:]' '[:lower:]')
+            docker login ghcr.io -u ${{ secrets.REGISTRY_USERNAME }} -p ${{ secrets.REGISTRY_PASSWORD }}
+            docker pull ghcr.io/$USERNAME/swms-tenant-backend:latest
+            docker stop swms-tenant-backend || true
+            docker rm swms-tenant-backend || true
+            docker run -d --name swms-tenant-backend -p 3002:3000 -p 37951:3001 ghcr.io/$USERNAME/swms-tenant-backend:latest
